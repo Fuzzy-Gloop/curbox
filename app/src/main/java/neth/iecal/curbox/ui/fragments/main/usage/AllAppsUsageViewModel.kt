@@ -211,9 +211,35 @@ class AllAppsUsageViewModel(application: Application) : AndroidViewModel(applica
         val dateString = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.getDefault()))
         val websiteStats = websiteStatsDao.getStatsForDate(dateString).filter { it.isWebsite() }
 
+        // Fold in website usage synced from other devices (e.g. the browser
+        // extension) as a single "Synced browsing" row. Empty on F-Droid.
+        val remote = runCatching {
+            neth.iecal.curbox.data.sync.SyncGateway.provider.remoteWebsiteUsage(date.toString())
+        }.getOrDefault(emptyMap())
+
+        var statsOut = stats
+        var websiteOut = websiteStats
+        if (remote.isNotEmpty()) {
+            val syncedWebsites = remote.map { (domain, ms) ->
+                WebsiteStatsEntity(
+                    date = dateString,
+                    packageName = neth.iecal.curbox.data.sync.SYNCED_WEB_PACKAGE,
+                    urlIdentifier = domain,
+                    domain = domain,
+                    totalTime = ms,
+                    lastVisited = 0L,
+                )
+            }
+            websiteOut = websiteStats + syncedWebsites
+            statsOut = (stats + AllAppsUsageFragment.Stat(
+                neth.iecal.curbox.data.sync.SYNCED_WEB_PACKAGE,
+                remote.values.sum(),
+            )).sortedByDescending { it.totalTime }
+        }
+
         withContext(Dispatchers.Main) {
-            _selectedDayStats.value = stats
-            _selectedDayWebsiteStats.value = websiteStats
+            _selectedDayStats.value = statsOut
+            _selectedDayWebsiteStats.value = websiteOut
             _totalTime.value = total
             _dateSublabel.value = sublabel
         }
@@ -247,6 +273,16 @@ class AllAppsUsageViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun getAppMetadata(packageName: String): AppMetadata {
+        if (packageName == neth.iecal.curbox.data.sync.SYNCED_WEB_PACKAGE) {
+            return AppMetadata(
+                label = "Synced browsing",
+                category = "OTHER DEVICES",
+                isSystemApp = false,
+                installDate = "",
+                lastUpdate = "",
+                icon = androidx.core.content.ContextCompat.getDrawable(getApplication(), neth.iecal.curbox.R.drawable.ic_synced_web),
+            )
+        }
         return appMetadataCache.computeIfAbsent(packageName) {
             try {
                 val appInfo = packageManager.getApplicationInfo(it, 0)

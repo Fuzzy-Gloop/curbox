@@ -115,6 +115,13 @@ dependencies {
     implementation (libs.provider)
 
     implementation(libs.gson)
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Cross device sync. These live only in the playstore flavor so the F-Droid
+    // build compiles with no network, no auth, and no Supabase code at all.
+    "playstoreImplementation"(libs.okhttp)
+    "playstoreImplementation"(libs.androidx.security.crypto)
+    "playstoreImplementation"(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
