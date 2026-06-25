@@ -28,5 +28,9 @@ val URL_BAR_ID_LIST = mapOf(
 
     "com.opera.browser" to BrowserUrlBarInfo(
         displayUrlBarId = "com.opera.browser:id/url_field",
-    ),
+    ), 
+
+    "com.github.iridiumbrowser.ironfox" to BrowserUrlBarInfo( 
+        displayUrlBarId = "com.ironfox.browser:id/url_bar", 
+        ), 
 )
